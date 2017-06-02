@@ -216,10 +216,10 @@ static struct /*_ivar_list_t*/ {
 } _OBJC_$_INSTANCE_VARIABLES_MyObject = {
 	sizeof(_ivar_t),
 	4,
-	{{(unsigned long int *)&OBJC_IVAR_$_MyObject$a, "a", "i", 2, 4},
+	{ {(unsigned long int *)&OBJC_IVAR_$_MyObject$a, "a", "i", 2, 4},
 	 {(unsigned long int *)&OBJC_IVAR_$_MyObject$b, "b", "*", 3, 8},
 	 {(unsigned long int *)&OBJC_IVAR_$_MyObject$obj, "obj", "@\"NSObject\"", 3, 8},
-	 {(unsigned long int *)&OBJC_IVAR_$_MyObject$_name, "_name", "@\"NSString\"", 3, 8}}
+	 {(unsigned long int *)&OBJC_IVAR_$_MyObject$_name, "_name", "@\"NSString\"", 3, 8} }
 };
 
 static struct /*_method_list_t*/ {
@@ -229,9 +229,9 @@ static struct /*_method_list_t*/ {
 } _OBJC_$_INSTANCE_METHODS_MyObject = {
 	sizeof(_objc_method),
 	3,
-	{{(struct objc_selector *)"showDescription:", "v24@0:8@16", (void *)_I_MyObject_showDescription_},
+	{ {(struct objc_selector *)"showDescription:", "v24@0:8@16", (void *)_I_MyObject_showDescription_},
 	{(struct objc_selector *)"name", "@16@0:8", (void *)_I_MyObject_name},
-	{(struct objc_selector *)"setName:", "v24@0:8@16", (void *)_I_MyObject_setName_}}
+	{(struct objc_selector *)"setName:", "v24@0:8@16", (void *)_I_MyObject_setName_} }
 };
 
 static struct /*_method_list_t*/ {
@@ -241,7 +241,7 @@ static struct /*_method_list_t*/ {
 } _OBJC_$_CLASS_METHODS_MyObject __attribute__ ((used, section ("__DATA,__objc_const"))) = {
 	sizeof(_objc_method),
 	1,
-	{{(struct objc_selector *)"calClassMethod", "v16@0:8", (void *)_C_MyObject_calClassMethod}}
+	{ {(struct objc_selector *)"calClassMethod", "v16@0:8", (void *)_C_MyObject_calClassMethod} }
 };
 ```
 在OC中执行的方法或者调用的变量及property都是从这里面去找的。
