@@ -47,7 +47,7 @@ categories: jekyll update
 
 现在就来看下这个cpp文件里面的内容是什么。
 
-###   1. MyObject的类定义生成一个类似的结构体：
+### 1. MyObject的类定义生成一个类似的结构体：
 
 ```
 struct MyObject_IMPL {
