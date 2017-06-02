@@ -1,0 +1,287 @@
+---
+layout: post
+title:  "iOS下RunTime分析一（OC文件编译为C++）"
+date:   2017-06-01 19:00:00 +0800
+categories: jekyll update
+---
+
+以类MyObject为例来进行分析。
+
+头文件：
+
+```
+@interface MyObject : NSObject
+
+@end
+```
+源文件:
+
+```
+@interface MyObject ()
+{
+    int a;
+    char *b;
+    NSObject *obj;
+}
+
+@property (nonatomic, strong) NSString *name;
+
+@end
+
+@implementation MyObject
+
++ (void)calClassMethod
+{
+    NSLog(@"class method");
+}
+
+- (void)showDescription:(NSString *)str
+{
+    NSLog(@"%@%@%d", str, self.name, a);
+}
+
+@end
+
+```
+通过 `clang -rewrite-objc MyObject.m`编译成功后，会生成一个MyObject.cpp文件。
+
+现在就来看下这个cpp文件里面的内容是什么。
+
+###1. MyObject的类定义生成一个类似的结构体：
+
+```
+struct MyObject_IMPL {
+	struct NSObject_IMPL NSObject_IVARS;
+	int a;
+	char *b;
+	NSObject *obj;
+	NSString *_name;
+};
+
+struct NSObject_IMPL {
+	Class isa;
+};
+```
+以及与runtime相关的一系列结构体：
+
+```
+struct _prop_t {
+	const char *name;
+	const char *attributes;
+};
+
+struct _protocol_t;
+
+struct _objc_method {
+	struct objc_selector * _cmd;
+	const char *method_type;
+	void  *_imp;
+};
+
+struct _protocol_t {
+	void * isa;  // NULL
+	const char *protocol_name;
+	const struct _protocol_list_t * protocol_list; // super protocols
+	const struct method_list_t *instance_methods;
+	const struct method_list_t *class_methods;
+	const struct method_list_t *optionalInstanceMethods;
+	const struct method_list_t *optionalClassMethods;
+	const struct _prop_list_t * properties;
+	const unsigned int size;  // sizeof(struct _protocol_t)
+	const unsigned int flags;  // = 0
+	const char ** extendedMethodTypes;
+};
+
+struct _ivar_t {
+	unsigned long int *offset;  // pointer to ivar offset location
+	const char *name;
+	const char *type;
+	unsigned int alignment;
+	unsigned int  size;
+};
+
+struct _class_ro_t {
+	unsigned int flags;
+	unsigned int instanceStart;
+	unsigned int instanceSize;
+	unsigned int reserved;
+	const unsigned char *ivarLayout;
+	const char *name;
+	const struct _method_list_t *baseMethods;
+	const struct _objc_protocol_list *baseProtocols;
+	const struct _ivar_list_t *ivars;
+	const unsigned char *weakIvarLayout;
+	const struct _prop_list_t *properties;
+};
+
+struct _class_t {
+	struct _class_t *isa;
+	struct _class_t *superclass;
+	void *cache;
+	void *vtable;
+	struct _class_ro_t *ro;
+};
+
+struct _category_t {
+	const char *name;
+	struct _class_t *cls;
+	const struct _method_list_t *instance_methods;
+	const struct _method_list_t *class_methods;
+	const struct _protocol_list_t *protocols;
+	const struct _prop_list_t *properties;
+};
+
+```
+通过看结构体的名字可以看出来是什么意思，不做详细解释。
+
+###2. 会生成4个static类型的C函数，分别是：
+
+```
+static void _C_MyObject_calClassMethod(Class self, SEL _cmd);
+static void _I_MyObject_showDescription_(MyObject * self, SEL _cmd, NSString *str);
+
+//是根据@property自动生成的getter和setter
+static NSString * _I_MyObject_name(MyObject * self, SEL _cmd);
+static void _I_MyObject_setName_(MyObject * self, SEL _cmd, NSString *name);
+```
+函数中`C`代表的是class method，`I`代表的是instance method。
+
+###3. 会创建4个很重要的结构体对象，在OC中其实就是类对象。
+
+```
+struct _class_ro_t _OBJC_METACLASS_RO_$_MyObject;//简化为:METACLASS_RO_MyObject
+struct _class_ro_t _OBJC_CLASS_RO_$_MyObject;//简化为:RO_MyObject
+struct _class_t OBJC_METACLASS_$_MyObject;//简化为:METACLASS_MyObject
+struct _class_t OBJC_CLASS_$_MyObject;//简化为:MyObject
+```
+下面就来看看这4个结构体对象是如何定义及如何组织的，为方便阅读，在这里会省去一些不必要的代码。
+
+```
+
+struct _class_t MyObject = {
+	0, //_class_t *isa = &METACLASS_MyObject,
+	0, //_class_t *superclass = &NSObject,
+	0, //void *cache = (void *)&_objc_empty_cache,
+	0, //void *vtable = (void *)&_objc_empty_vtable, unused
+	&RO_MyObject, //_class_ro_t *ro,
+};
+
+struct _class_t METACLASS_MyObject = {
+	0, // &METACLASS_NSObject,
+	0, // &METACLASS_NSObject,
+	0, // (void *)&_objc_empty_cache,
+	0, // (void *)&_objc_empty_vtable,unused
+	&METACLASS_RO_MyObject,
+};
+
+static struct _class_ro_t RO_MyObject = {
+	0,                                    //flags
+	__OFFSETOFIVAR__(struct MyObject, a), //instanceStart
+	sizeof(struct MyObject_IMPL),         //instanceSize
+	0,                                    //reserved
+	0,                                    //ivarLayout
+	"MyObject",                           //name
+	&_OBJC_$_INSTANCE_METHODS_MyObject,   //baseMethods
+	0,                                    //baseProtocols
+	&_OBJC_$_INSTANCE_VARIABLES_MyObject, //ivars
+	0,                                    //weakIvarLayout
+	0,                                    //properties
+};
+
+static struct _class_ro_t METACLASS_RO_MyObject = {
+	1,                               //flags
+	sizeof(struct _class_t),         //instanceStart
+	sizeof(struct _class_t),         //instanceSize
+	0,                               //reserved
+	0,                               //ivarLayout
+	"MyObject",                      //name
+	&_OBJC_$_CLASS_METHODS_MyObject, //baseMethods
+	0,                               //baseProtocols
+	0,                               //ivars
+	0,                               //weakIvarLayout
+	0,                               //properties
+};
+```
+
+###4. MyObject类中声明的“成员变量”、“Property”、“方法”的生成及组织方式
+在上面的`RO_MyObject`和`METACLASS_RO_MyObject`中出现的<mark>\_OBJC\_$\_INSTANCE\_METHODS\_MyObject</mark>、<mark>\_OBJC\_$\_INSTANCE\_VARIABLES\_MyObject</mark>，<mark>\_OBJC\_$\_CLASS\_METHODS\_MyObject</mark>又是什么呢？
+
+源码一目了然：
+
+```
+static struct /*_ivar_list_t*/ {
+	unsigned int entsize;
+	unsigned int count;
+	struct _ivar_t ivar_list[4];
+} _OBJC_$_INSTANCE_VARIABLES_MyObject = {
+	sizeof(_ivar_t),
+	4,
+	{{(unsigned long int *)&OBJC_IVAR_$_MyObject$a, "a", "i", 2, 4},
+	 {(unsigned long int *)&OBJC_IVAR_$_MyObject$b, "b", "*", 3, 8},
+	 {(unsigned long int *)&OBJC_IVAR_$_MyObject$obj, "obj", "@\"NSObject\"", 3, 8},
+	 {(unsigned long int *)&OBJC_IVAR_$_MyObject$_name, "_name", "@\"NSString\"", 3, 8}}
+};
+
+static struct /*_method_list_t*/ {
+	unsigned int entsize;
+	unsigned int method_count;
+	struct _objc_method method_list[3];
+} _OBJC_$_INSTANCE_METHODS_MyObject = {
+	sizeof(_objc_method),
+	3,
+	{{(struct objc_selector *)"showDescription:", "v24@0:8@16", (void *)_I_MyObject_showDescription_},
+	{(struct objc_selector *)"name", "@16@0:8", (void *)_I_MyObject_name},
+	{(struct objc_selector *)"setName:", "v24@0:8@16", (void *)_I_MyObject_setName_}}
+};
+
+static struct /*_method_list_t*/ {
+	unsigned int entsize;
+	unsigned int method_count;
+	struct _objc_method method_list[1];
+} _OBJC_$_CLASS_METHODS_MyObject __attribute__ ((used, section ("__DATA,__objc_const"))) = {
+	sizeof(_objc_method),
+	1,
+	{{(struct objc_selector *)"calClassMethod", "v16@0:8", (void *)_C_MyObject_calClassMethod}}
+};
+```
+在OC中执行的方法或者调用的变量及property都是从这里面去找的。
+
+###5. 生成的其他源码
+
+```
+#define __OFFSETOFIVAR__(TYPE, MEMBER) ((long long) &((TYPE *)0)->MEMBER)
+unsigned long int OBJC_IVAR_$_MyObject$a = __OFFSETOFIVAR__(struct MyObject, a);
+unsigned long int OBJC_IVAR_$_MyObject$b = __OFFSETOFIVAR__(struct MyObject, b);
+unsigned long int OBJC_IVAR_$_MyObject$obj = __OFFSETOFIVAR__(struct MyObject, obj);
+unsigned long int OBJC_IVAR_$_MyObject$_name = __OFFSETOFIVAR__(struct MyObject, _name);
+```
+<mark>这个`__OFFSETOFIVAR__`的宏定义的使用寻找变量地址感觉很新奇，以后开发中可以借鉴。</mark>
+
+```
+static void OBJC_CLASS_SETUP_$_MyObject(void ) {
+	METACLASS_MyObject.isa = &METACLASS_NSObject;
+	METACLASS_MyObject.superclass = METACLASS_NSObject;
+	METACLASS_MyObject.cache = &_objc_empty_cache;
+	MyObject.isa = METACLASS_MyObject;
+	MyObject.superclass = NSObject;
+	MyObject.cache = &_objc_empty_cache;
+}
+static void *OBJC_CLASS_SETUP[] = {
+	(void *)&OBJC_CLASS_SETUP_$_MyObject,
+};
+static struct _class_t *L_OBJC_LABEL_CLASS_$ [1] = {
+	&MyObject,
+};
+static struct IMAGE_INFO { unsigned version; unsigned flag; } _OBJC_IMAGE_INFO = { 0, 2 };
+```
+
+以上就是对OC代码通过clang编译为C++代码的一些源码的解析及理解。不过在期间也产生了一些疑问：
+
+1. **以上4个结构体对象创建出来时都只是一些默认赋值，真正的赋值是在OBJC\_CLASS\_SETUP\_\$\_MyObject函数里面做的，那么该函数是在什么情况下执行呢？**
+2. **上面第4点中的成员变量、property、方法都是在编译的情况下生成的是静态数组，那怎么在runtime下动态的添加成员变量、property、方法呢？**
+3. **源代码中生成的都是类对象，如果根据类对象创建一个实例对象时，实例对象结构是怎么样的？**
+4. **在app启动时，这些类对象及在编译阶段生成的对象是如何加入到runtime中的？**
+5. **在有协议、类别和KVO时源码又是什么样的？**
+6. **当调用实例对象和类对象的方法时是怎么样一个查询过程？**
+
+后续会一一解决。
