@@ -47,7 +47,7 @@ categories: jekyll update
 
 现在就来看下这个cpp文件里面的内容是什么。
 
-### 1. MyObject的类定义生成一个类似的结构体：
+###   1. MyObject的类定义生成一个类似的结构体：
 
 ```
 struct MyObject_IMPL {
@@ -204,7 +204,7 @@ static struct _class_ro_t METACLASS_RO_MyObject = {
 ```
 
 ### 4. MyObject类中声明的“成员变量”、“Property”、“方法”的生成及组织方式
-在上面的`RO_MyObject`和`METACLASS_RO_MyObject`中出现的<mark>\_OBJC\_$\_INSTANCE\_METHODS\_MyObject</mark>、<mark>\_OBJC\_$\_INSTANCE\_VARIABLES\_MyObject</mark>，<mark>\_OBJC\_$\_CLASS\_METHODS\_MyObject</mark>又是什么呢？
+在上面的`RO_MyObject`和`METACLASS_RO_MyObject`中出现的<mark>_OBJC_$_INSTANCE_METHODS_MyObject</mark>、<mark>_OBJC_$_INSTANCE_VARIABLES_MyObject</mark>，<mark>_OBJC_$_CLASS_METHODS_MyObject</mark>又是什么呢？
 
 源码一目了然：
 
@@ -218,8 +218,8 @@ static struct /*_ivar_list_t*/ {
 	4,
 	{ {(unsigned long int *)&OBJC_IVAR_$_MyObject$a, "a", "i", 2, 4},
 	 {(unsigned long int *)&OBJC_IVAR_$_MyObject$b, "b", "*", 3, 8},
-	 {(unsigned long int *)&OBJC_IVAR_$_MyObject$obj, "obj", "@\"NSObject\"", 3, 8},
-	 {(unsigned long int *)&OBJC_IVAR_$_MyObject$_name, "_name", "@\"NSString\"", 3, 8} }
+	 {(unsigned long int *)&OBJC_IVAR_$_MyObject$obj, "obj", "@"NSObject"", 3, 8},
+	 {(unsigned long int *)&OBJC_IVAR_$_MyObject$_name, "_name", "@"NSString"", 3, 8} }
 };
 
 static struct /*_method_list_t*/ {
@@ -238,7 +238,7 @@ static struct /*_method_list_t*/ {
 	unsigned int entsize;
 	unsigned int method_count;
 	struct _objc_method method_list[1];
-} _OBJC_$_CLASS_METHODS_MyObject __attribute__ ((used, section ("__DATA,__objc_const"))) = {
+} _OBJC_$_CLASS_METHODS_MyObject = {
 	sizeof(_objc_method),
 	1,
 	{ {(struct objc_selector *)"calClassMethod", "v16@0:8", (void *)_C_MyObject_calClassMethod} }
@@ -255,15 +255,15 @@ unsigned long int OBJC_IVAR_$_MyObject$b = __OFFSETOFIVAR__(struct MyObject, b);
 unsigned long int OBJC_IVAR_$_MyObject$obj = __OFFSETOFIVAR__(struct MyObject, obj);
 unsigned long int OBJC_IVAR_$_MyObject$_name = __OFFSETOFIVAR__(struct MyObject, _name);
 ```
-<mark>这个`__OFFSETOFIVAR__`的宏定义的使用寻找变量地址感觉很新奇，以后开发中可以借鉴。</mark>
+<mark>这个__OFFSETOFIVAR__的宏定义的使用寻找变量地址感觉很新奇，以后开发中可以借鉴。</mark>
 
 ```
 static void OBJC_CLASS_SETUP_$_MyObject(void ) {
 	METACLASS_MyObject.isa = &METACLASS_NSObject;
-	METACLASS_MyObject.superclass = METACLASS_NSObject;
+	METACLASS_MyObject.superclass = &METACLASS_NSObject;
 	METACLASS_MyObject.cache = &_objc_empty_cache;
-	MyObject.isa = METACLASS_MyObject;
-	MyObject.superclass = NSObject;
+	MyObject.isa = &METACLASS_MyObject;
+	MyObject.superclass = &NSObject;
 	MyObject.cache = &_objc_empty_cache;
 }
 static void *OBJC_CLASS_SETUP[] = {
