@@ -47,7 +47,7 @@ categories: jekyll update
 
 现在就来看下这个cpp文件里面的内容是什么。
 
-###1. MyObject的类定义生成一个类似的结构体：
+### 1. MyObject的类定义生成一个类似的结构体：
 
 ```
 struct MyObject_IMPL {
@@ -134,7 +134,7 @@ struct _category_t {
 ```
 通过看结构体的名字可以看出来是什么意思，不做详细解释。
 
-###2. 会生成4个static类型的C函数，分别是：
+### 2. 会生成4个static类型的C函数，分别是：
 
 ```
 static void _C_MyObject_calClassMethod(Class self, SEL _cmd);
@@ -146,7 +146,7 @@ static void _I_MyObject_setName_(MyObject * self, SEL _cmd, NSString *name);
 ```
 函数中`C`代表的是class method，`I`代表的是instance method。
 
-###3. 会创建4个很重要的结构体对象，在OC中其实就是类对象。
+### 3. 会创建4个很重要的结构体对象，在OC中其实就是类对象。
 
 ```
 struct _class_ro_t _OBJC_METACLASS_RO_$_MyObject;//简化为:METACLASS_RO_MyObject
@@ -203,7 +203,7 @@ static struct _class_ro_t METACLASS_RO_MyObject = {
 };
 ```
 
-###4. MyObject类中声明的“成员变量”、“Property”、“方法”的生成及组织方式
+### 4. MyObject类中声明的“成员变量”、“Property”、“方法”的生成及组织方式
 在上面的`RO_MyObject`和`METACLASS_RO_MyObject`中出现的<mark>\_OBJC\_$\_INSTANCE\_METHODS\_MyObject</mark>、<mark>\_OBJC\_$\_INSTANCE\_VARIABLES\_MyObject</mark>，<mark>\_OBJC\_$\_CLASS\_METHODS\_MyObject</mark>又是什么呢？
 
 源码一目了然：
@@ -246,7 +246,7 @@ static struct /*_method_list_t*/ {
 ```
 在OC中执行的方法或者调用的变量及property都是从这里面去找的。
 
-###5. 生成的其他源码
+### 5. 生成的其他源码
 
 ```
 #define __OFFSETOFIVAR__(TYPE, MEMBER) ((long long) &((TYPE *)0)->MEMBER)
