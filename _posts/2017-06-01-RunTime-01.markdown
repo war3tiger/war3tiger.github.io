@@ -275,6 +275,44 @@ static struct _class_t *L_OBJC_LABEL_CLASS_$ [1] = {
 static struct IMAGE_INFO { unsigned version; unsigned flag; } _OBJC_IMAGE_INFO = { 0, 2 };
 ```
 
+## 备注
+
+在OC的源文件里有个属性的声明：<mark>@property (nonatomic, strong) NSString *name;</mark>
+
+在编译之后的C++代码里面有个：<mark>struct _prop_t</mark>结构体，这个就是表示属性的一个结构体，可是在C++代码里面并没有体现出来name这个属性的结构体对象。如果把<mark>@property (nonatomic, strong) NSString *name;</mark>放到头文件就会在C++源码中看到这个name属性的结构体对象。编译之后的源码如下：
+
+```
+//_prop_list_t
+static struct {
+	unsigned int entsize;  // sizeof(struct _prop_t)
+	unsigned int count_of_properties;
+	struct _prop_t prop_list[1];
+} _OBJC_$_PROP_LIST_MyObject = {
+	sizeof(_prop_t),
+	1,
+	{{"name","T@\"NSString\",&,N,V_name"}}
+};
+
+static struct _class_ro_t RO_MyObject = {
+	0, 
+	__OFFSETOFIVAR__(struct MyObject, a), 
+	sizeof(struct MyObject_IMPL), 
+	(unsigned int)0, 
+	0, 
+	"MyObject",
+	&_OBJC_$_INSTANCE_METHODS_MyObject,
+	0, 
+	&_OBJC_$_INSTANCE_VARIABLES_MyObject,
+	0, 
+	&_OBJC_$_PROP_LIST_MyObject,
+};
+```
+
+# End
+
+---
+
+
 以上就是对OC代码通过clang编译为C++代码的一些源码的解析及理解。不过在期间也产生了一些疑问：
 
 1. **以上4个结构体对象创建出来时都只是一些默认赋值，真正的赋值是在OBJC\_CLASS\_SETUP\_\$\_MyObject函数里面做的，那么该函数是在什么情况下执行呢？**
