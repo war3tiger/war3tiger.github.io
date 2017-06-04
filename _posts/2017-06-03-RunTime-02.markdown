@@ -1,0 +1,237 @@
+---
+layout: post
+title:  "iOS下RunTime分析二（协议C++源码）"
+date:   2017-06-01 19:00:00 +0800
+categories: jekyll update
+---
+接上一篇文章：[iOS下RunTime分析一（OC文件编译为C++）](http://war3tiger.github.io/jekyll/update/2017/06/01/RunTime-01.html)
+
+这里主要是解释**iOS下RunTime分析一（OC文件编译为C++）**中的第5点疑问。
+
+##  先看协议部分的OC源码
+头文件：
+
+```
+@protocol ChildDelegate <NSObject>
+@optional
+- (void)optionalMethod;
+@property (nonatomic, strong) NSObject *optionalObj;
+
+@required
+- (void)requiredMethod:(NSString *)obj;
+@property (nonatomic, strong) NSObject *requiredObj;
+@end
+
+@interface ChildObject : MyObject
+<NSCopying, ChildDelegate>
+
+@end
+```
+源文件：
+
+```
+@interface ChildObject ()
+{
+    int childA;
+    NSObject *childObj;
+}
+@property (nonatomic, strong) NSString *childName;
+@end
+
+@implementation ChildObject
+@synthesize requiredObj = _requiredObj;
+
++ (void)showChildClassMethod
+{
+    NSLog(@"child object");
+}
+
+- (void)childInstanceMethod
+{
+    NSLog(@"child instance object");
+}
+
+- (id)copyWithZone:(NSZone *)zone
+{
+    return nil;
+}
+
+- (void)optionalMethod
+{
+    
+}
+
+- (void)requiredMethod:(NSString *)obj
+{
+    
+}
+
+@end
+
+```
+现在来看下编译成C++之后的源代码，**与RunTime分析一相似的部分，不在重新写了**。
+
+会生成一个protocol的结构体：
+
+```
+struct _protocol_t {
+	void * isa;  // NULL
+	const char *protocol_name;
+	const struct _protocol_list_t * protocol_list; // super protocols
+	const struct method_list_t *instance_methods;
+	const struct method_list_t *class_methods;
+	const struct method_list_t *optionalInstanceMethods;
+	const struct method_list_t *optionalClassMethods;
+	const struct _prop_list_t * properties;
+	const unsigned int size;  // sizeof(struct _protocol_t)
+	const unsigned int flags;  // = 0
+	const char ** extendedMethodTypes;
+};
+```
+以及与protocol相关的一些全局静态变量：
+
+```
+static const char *_OBJC_PROTOCOL_METHOD_TYPES_NSCopying [] = 
+{
+	"@24@0:8^{_NSZone=}16"
+};
+
+static struct /*_method_list_t*/ {
+	unsigned int entsize;  // sizeof(struct _objc_method)
+	unsigned int method_count;
+	struct _objc_method method_list[1];
+} _OBJC_PROTOCOL_INSTANCE_METHODS_NSCopying  = {
+	sizeof(_objc_method),
+	1,
+	{ {(struct objc_selector *)"copyWithZone:", "@24@0:8^{_NSZone=}16", 0} }
+};
+
+struct _protocol_t _OBJC_PROTOCOL_NSCopying = {
+	0,
+	"NSCopying",
+	0,
+	(const struct method_list_t *)&_OBJC_PROTOCOL_INSTANCE_METHODS_NSCopying,
+	0,
+	0,
+	0,
+	0,
+	sizeof(_protocol_t),
+	0,
+	(const char **)&_OBJC_PROTOCOL_METHOD_TYPES_NSCopying
+};
+
+struct _protocol_t *_OBJC_LABEL_PROTOCOL_$_NSCopying = &_OBJC_PROTOCOL_NSCopying;
+```
+以上是NSCopying的协议的生成代码。
+
+下面来继续看ChildDelegate协议的生成代码：
+
+```
+static const char *_OBJC_PROTOCOL_METHOD_TYPES_ChildDelegate = 
+{
+	"v24@0:8@\"NSString\"16",
+	"@\"NSObject\"16@0:8",
+	"v24@0:8@\"NSObject\"16",
+	"v16@0:8",
+	"@\"NSObject\"16@0:8",
+	"v24@0:8@\"NSObject\"16"
+};
+
+//因为ChildDelegate是继承自NSObojce协议的，所以会多出来这个结构体
+static struct /*_protocol_list_t*/ {
+	long protocol_count;  // Note, this is 32/64 bit
+	struct _protocol_t *super_protocols[1];
+} _OBJC_PROTOCOL_REFS_ChildDelegate = {
+	1,
+	&_OBJC_PROTOCOL_NSObject
+};
+
+//@required 方法
+static struct /*_method_list_t*/ {
+	unsigned int entsize;  // sizeof(struct _objc_method)
+	unsigned int method_count;
+	struct _objc_method method_list[3];
+} _OBJC_PROTOCOL_INSTANCE_METHODS_ChildDelegate = {
+	sizeof(_objc_method),
+	3,
+	{ {(struct objc_selector *)"requiredMethod:", "v24@0:8@16", 0},
+	{(struct objc_selector *)"requiredObj", "@16@0:8", 0},
+	{(struct objc_selector *)"setRequiredObj:", "v24@0:8@16", 0} }
+};
+
+//optional 方法
+static struct /*_method_list_t*/ {
+	unsigned int entsize;  // sizeof(struct _objc_method)
+	unsigned int method_count;
+	struct _objc_method method_list[3];
+} _OBJC_PROTOCOL_OPT_INSTANCE_METHODS_ChildDelegate = {
+	sizeof(_objc_method),
+	3,
+	{ {(struct objc_selector *)"optionalMethod", "v16@0:8", 0},
+	{(struct objc_selector *)"optionalObj", "@16@0:8", 0},
+	{(struct objc_selector *)"setOptionalObj:", "v24@0:8@16", 0} }
+};
+
+//property
+static struct /*_prop_list_t*/ {
+	unsigned int entsize;  // sizeof(struct _prop_t)
+	unsigned int count_of_properties;
+	struct _prop_t prop_list[2];
+} _OBJC_PROTOCOL_PROPERTIES_ChildDelegate = {
+	sizeof(_prop_t),
+	2,
+	{ {"optionalObj","T@\"NSObject\",&,N"},
+	{"requiredObj","T@\"NSObject\",&,N"} }
+};
+
+struct _protocol_t _OBJC_PROTOCOL_ChildDelegate = {
+	0,
+	"ChildDelegate",
+	&_OBJC_PROTOCOL_REFS_ChildDelegate,
+	&_OBJC_PROTOCOL_INSTANCE_METHODS_ChildDelegate,
+	0,
+	)&_OBJC_PROTOCOL_OPT_INSTANCE_METHODS_ChildDelegate,
+	0,
+	&_OBJC_PROTOCOL_PROPERTIES_ChildDelegate,
+	sizeof(_protocol_t),
+	0,
+	&_OBJC_PROTOCOL_METHOD_TYPES_ChildDelegate
+};
+struct _protocol_t *_OBJC_LABEL_PROTOCOL_$_ChildDelegate = &_OBJC_PROTOCOL_ChildDelegate;
+```
+......
+
+以此类推如何还实现了其他的协议，那么又会生成一个<mark>_protocol_t</mark>结构体的对象。
+
+生成的一系列<mark>_protocol_t</mark>这个结构体对象，最终会被组织成一个<mark>_protocol_list_t</mark>类型的结构体对象，如下：
+
+```
+static struct /*_protocol_list_t*/ {
+	long protocol_count;  // Note, this is 32/64 bit
+	struct _protocol_t *super_protocols[2];
+} _OBJC_CLASS_PROTOCOLS_$_ChildObject = {
+	2,
+	{&_OBJC_PROTOCOL_NSCopying,
+	 &_OBJC_PROTOCOL_ChildDelegate}
+};
+```
+
+生成的<mark>_OBJC_CLASS_PROTOCOLS_$_ChildObject</mark>会被加到<mark>RO_ChildObject</mark>中去。
+
+```
+static struct _class_ro_t RO_ChildObject = {
+	0, __OFFSETOFIVAR__(struct ChildObject, childA), 
+	sizeof(struct ChildObject_IMPL), 
+	(unsigned int)0, 
+	0, 
+	"ChildObject",
+	&_OBJC_$_INSTANCE_METHODS_ChildObject,
+	&_OBJC_CLASS_PROTOCOLS_$_ChildObject,
+	&_OBJC_$_INSTANCE_VARIABLES_ChildObject,
+	0, 
+	0, 
+};
+```
+
+## 总结：
+一个OC对象类实现了n个协议就会生成对应的n个<mark>_protocol_t</mark>的结构体对象，而这些对象最终会被放到一个<mark>_protocol_list_t</mark>结构体中赋值给该类对象的一个变量中。
