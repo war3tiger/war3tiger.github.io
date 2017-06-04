@@ -1,0 +1,178 @@
+---
+layout: post
+title:  "iOS下RunTime分析三（扩展C++源码）"
+date:   2017-06-04 17:00:00 +0800
+categories: jekyll update
+---
+接上一篇文章：[iOS下RunTime分析一（OC文件编译为C++）](http://war3tiger.github.io/jekyll/update/2017/06/01/RunTime-01.html)
+
+这里主要是解释**iOS下RunTime分析一（OC文件编译为C++）**中的第5点疑问。
+
+##  这里看类别部分的OC源码
+头文件：
+
+```
+@interface MyObject (Extensions)
+- (void)methodA;
+- (void)methodB:(NSString *)str;
+@property (nonatomic, strong) NSObject *methodObj;
+@end
+
+@interface MyObject (Common)
+- (void)methodCommon;
++ (void)classCommonMethod;
+@end
+```
+源文件：
+
+```
+@implementation MyObject (Extensions)
+
+- (void)methodA
+{
+    return;
+}
+
+- (void)methodB:(NSString *)str
+{
+    return;
+}
+
+- (NSObject *)methodObj
+{
+    return nil;
+}
+
+- (void)setMethodObj:(NSObject *)methodObj
+{
+    return;
+}
+
+@end
+
+@implementation MyObject (Common)
+
+- (void)methodCommon
+{
+    return;
+}
+
++ (void)classCommonMethod
+{
+    return;
+}
+
+@end
+
+```
+现在来看下编译成C++之后的源代码，**与RunTime分析一相似的部分，不在重新写了**。
+
+会生成一个<mark>_category_t</mark>的结构体：
+
+```
+struct _category_t {
+	const char *name;
+	struct _class_t *cls;
+	const struct _method_list_t *instance_methods;
+	const struct _method_list_t *class_methods;
+	const struct _protocol_list_t *protocols;
+	const struct _prop_list_t *properties;
+};
+```
+
+以及相关的静态结构体对象：
+
+```
+static struct /*_method_list_t*/ {
+	unsigned int entsize;  // sizeof(struct _objc_method)
+	unsigned int method_count;
+	struct _objc_method method_list[4];
+} _OBJC_$_CATEGORY_INSTANCE_METHODS_MyObject_$_Extensions = {
+	sizeof(_objc_method),
+	4,
+	{ {(struct objc_selector *)"methodA", "v16@0:8", (void *)_I_MyObject_Extensions_methodA},
+	{(struct objc_selector *)"methodB:", "v24@0:8@16", (void *)_I_MyObject_Extensions_methodB_},
+	{(struct objc_selector *)"methodObj", "@16@0:8", (void *)_I_MyObject_Extensions_methodObj},
+	{(struct objc_selector *)"setMethodObj:", "v24@0:8@16", (void *)_I_MyObject_Extensions_setMethodObj_} }
+};
+
+static struct /*_prop_list_t*/ {
+	unsigned int entsize;  // sizeof(struct _prop_t)
+	unsigned int count_of_properties;
+	struct _prop_t prop_list[1];
+} _OBJC_$_PROP_LIST_MyObject_$_Extensions = {
+	sizeof(_prop_t),
+	1,
+	{ {"methodObj","T@\"NSObject\",&,N"}}
+};
+
+static struct _category_t _OBJC_$_CATEGORY_MyObject_$_Extensions = 
+{
+	"MyObject",
+	0, // &MyObject,
+	&_OBJC_$_CATEGORY_INSTANCE_METHODS_MyObject_$_Extensions,
+	0,
+	0,
+	(const struct _prop_list_t *)&_OBJC_$_PROP_LIST_MyObject_$_Extensions,
+};
+
+static void OBJC_CATEGORY_SETUP_$_MyObject_$_Extensions(void ) {
+	_OBJC_$_CATEGORY_MyObject_$_Extensions.cls = &MyObject;
+}
+```
+
+以上生成的是<mark>@interface MyObject (Extensions)</mark>这个类别中的相关结构体对象。
+
+下面看下<mark>@interface MyObject (Common)</mark>中的结构体对象：
+
+```
+static struct /*_method_list_t*/ {
+	unsigned int entsize;  // sizeof(struct _objc_method)
+	unsigned int method_count;
+	struct _objc_method method_list[1];
+} _OBJC_$_CATEGORY_INSTANCE_METHODS_MyObject_$_Common  = {
+	sizeof(_objc_method),
+	1,
+	{ {"methodCommon", "v16@0:8", (void *)_I_MyObject_Common_methodCommon} }
+};
+
+static struct /*_method_list_t*/ {
+	unsigned int entsize;  // sizeof(struct _objc_method)
+	unsigned int method_count;
+	struct _objc_method method_list[1];
+} _OBJC_$_CATEGORY_CLASS_METHODS_MyObject_$_Common = {
+	sizeof(_objc_method),
+	1,
+	{ {"classCommonMethod", "v16@0:8", (void*)_C_MyObject_Common_classCommonMethod}}
+};
+
+static struct _category_t _OBJC_$_CATEGORY_MyObject_$_Common = 
+{
+	"MyObject",
+	0, // &MyObject,
+	&_OBJC_$_CATEGORY_INSTANCE_METHODS_MyObject_$_Common,
+	)&_OBJC_$_CATEGORY_CLASS_METHODS_MyObject_$_Common,
+	0,
+	0,
+};
+static void OBJC_CATEGORY_SETUP_$_MyObject_$_Common(void ) {
+	_OBJC_$_CATEGORY_MyObject_$_Common.cls = &MyObject;
+}
+```
+
+以上两个结构体对象都是通过<mark>OBJC_CATEGORY_SETUP_$_MyObject_$_Extensions</mark>和<mark>OBJC_CATEGORY_SETUP_$_MyObject_$_Common</mark>与<mark>MyObject</mark>这个类关联起来的。
+
+```
+static void *OBJC_CATEGORY_SETUP[] = {
+	(void *)&OBJC_CATEGORY_SETUP_$_MyObject_$_Extensions,
+	(void *)&OBJC_CATEGORY_SETUP_$_MyObject_$_Common,
+};
+static struct _category_t *L_OBJC_LABEL_CATEGORY_$ [2] = {
+	&_OBJC_$_CATEGORY_MyObject_$_Extensions,
+	&_OBJC_$_CATEGORY_MyObject_$_Common,
+};
+static struct IMAGE_INFO { unsigned version; unsigned flag; } _OBJC_IMAGE_INFO = { 0, 2 };
+```
+
+## 总结
+每个category都是一个结构体的对象，只是_category_t中的isa指向的是MyObject的对象。只是现在有一个疑问，当调用category中的方法时，MyObject是如何找到该方法的？
