@@ -1,0 +1,22 @@
+---
+layout: post
+title:  "iOS下RunTime分析四（启动加载）"
+date:   2017-06-04 17:00:00 +0800
+categories: jekyll update
+---
+
+这里主要是解释：
+
+1. [iOS下RunTime分析一（OC文件编译为C++）](http://war3tiger.github.io/jekyll/update/2017/06/01/RunTime-01.html)中的第4点疑问。
+2. [iOS下RunTime分析三（扩展C++源码）](http://war3tiger.github.io/jekyll/update/2017/06/04/RunTime-03.html)中的总结的疑问。
+
+---
+> 该runtime源码分析及runtime源码都是基于MacOS 10.12.4 版本。
+
+我们一般写程序都是以main函数作为程序入口开始编程的。那么在程序启动到开始执行main函数之间代码是如何调用的，每个类的load方法又是在什么情况下调用的？某个类的category中的方法、属性又是如何与主类联系起来的？一起来分析下。
+
+首先需要大家把runtime的源码先下载下来，还可以编译runtime源码生成自己的libobjc.A.dylib。可以参考该文章：[objc - 编译Runtime源码objc4-680](http://blog.csdn.net/wotors/article/details/52489464)。
+
+Objective-C的运行是依赖于runtime库，runtime与其他库一样，都是通过dyld动态加载进来的。
+
+runtime运行OC，开始加载OC类
