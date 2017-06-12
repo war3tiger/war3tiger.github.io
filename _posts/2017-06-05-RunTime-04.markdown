@@ -19,4 +19,20 @@ categories: jekyll update
 
 Objective-C的运行是依赖于runtime库，runtime与其他库一样，都是通过dyld动态加载进来的。
 
-runtime运行OC，开始加载OC类
+runtime运行OC，开始加载OC类，入口如下：
+![](https://raw.githubusercontent.com/war3tiger/war3tiger.github.io/master/resources/runtime04/_objc_init.png)
+在该函数中主要加载OC类的主要是`_dyld_objc_notify_register(&map_images, load_images, unmap_image);`这个函数。
+# map_images
+当dyld加载OC的类库时会调用到该方法，该方法会调用多次，可能是dyld在加载OC类库时没有全部加载进来，而是一部分一部分加载的。可以看下该方法的实现：
+
+```
+void
+map_images(unsigned count, const char * const paths[],
+           const struct mach_header * const mhdrs[])
+{
+    rwlock_writer_t lock(runtimeLock);
+    return map_images_nolock(count, paths, mhdrs);
+}
+```
+这里的paths里面的其实是dyld加载的各个OC的类库，mdhrs是与类库相对应的一个mach_header类型的变量。可以看下paths里面的内容：
+![]()
