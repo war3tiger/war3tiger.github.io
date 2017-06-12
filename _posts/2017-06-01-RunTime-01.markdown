@@ -158,6 +158,7 @@ struct _class_t OBJC_CLASS_$_MyObject;//简化为:MyObject
 
 ```
 
+(used, section ("__DATA,__objc_data"))
 struct _class_t MyObject = {
 	0, //_class_t *isa = &METACLASS_MyObject,
 	0, //_class_t *superclass = &NSObject,
@@ -166,6 +167,7 @@ struct _class_t MyObject = {
 	&RO_MyObject, //_class_ro_t *ro,
 };
 
+(used, section ("__DATA,__objc_data"))
 struct _class_t METACLASS_MyObject = {
 	0, // &METACLASS_NSObject,
 	0, // &METACLASS_NSObject,
@@ -174,6 +176,7 @@ struct _class_t METACLASS_MyObject = {
 	&METACLASS_RO_MyObject,
 };
 
+(used, section ("__DATA,__objc_const"))
 static struct _class_ro_t RO_MyObject = {
 	0,                                    //flags
 	__OFFSETOFIVAR__(struct MyObject, a), //instanceStart
@@ -188,6 +191,7 @@ static struct _class_ro_t RO_MyObject = {
 	0,                                    //properties
 };
 
+(used, section ("__DATA,__objc_const"))
 static struct _class_ro_t METACLASS_RO_MyObject = {
 	1,                               //flags
 	sizeof(struct _class_t),         //instanceStart
@@ -209,6 +213,7 @@ static struct _class_ro_t METACLASS_RO_MyObject = {
 源码一目了然：
 
 ```
+(used, section ("__DATA,__objc_const"))
 static struct /*_ivar_list_t*/ {
 	unsigned int entsize;
 	unsigned int count;
@@ -222,6 +227,7 @@ static struct /*_ivar_list_t*/ {
 	 {(unsigned long int *)&OBJC_IVAR_$_MyObject$_name, "_name", "@"NSString"", 3, 8} }
 };
 
+(used, section ("__DATA,__objc_const"))
 static struct /*_method_list_t*/ {
 	unsigned int entsize;
 	unsigned int method_count;
@@ -234,6 +240,7 @@ static struct /*_method_list_t*/ {
 	{(struct objc_selector *)"setName:", "v24@0:8@16", (void *)_I_MyObject_setName_} }
 };
 
+(used, section ("__DATA,__objc_const"))
 static struct /*_method_list_t*/ {
 	unsigned int entsize;
 	unsigned int method_count;
@@ -249,7 +256,10 @@ static struct /*_method_list_t*/ {
 ### 5. 生成的其他源码
 
 ```
+
 #define __OFFSETOFIVAR__(TYPE, MEMBER) ((long long) &((TYPE *)0)->MEMBER)
+
+(used, section ("__DATA,__objc_ivar"))
 unsigned long int OBJC_IVAR_$_MyObject$a = __OFFSETOFIVAR__(struct MyObject, a);
 unsigned long int OBJC_IVAR_$_MyObject$b = __OFFSETOFIVAR__(struct MyObject, b);
 unsigned long int OBJC_IVAR_$_MyObject$obj = __OFFSETOFIVAR__(struct MyObject, obj);
@@ -283,6 +293,7 @@ static struct IMAGE_INFO { unsigned version; unsigned flag; } _OBJC_IMAGE_INFO =
 
 ```
 //_prop_list_t
+(used, section ("__DATA,__objc_const"))
 static struct {
 	unsigned int entsize;  // sizeof(struct _prop_t)
 	unsigned int count_of_properties;
@@ -307,6 +318,9 @@ static struct _class_ro_t RO_MyObject = {
 	&_OBJC_$_PROP_LIST_MyObject,
 };
 ```
+
+# 说明
+在生成的C++源码中会出现<mark>**(used, section ("__DATA,__objc_const"))**</mark>、<mark>**(used, section ("__DATA,__objc_ivar"))**</mark>、<mark>**(used, section ("__DATA,__objc_const"))**</mark>类似于这种样式的代码，这个表示用这些标示的变量会被放到程序的数据段，程序启动时runtime会从数据段加载这些信息。
 
 # End
 
