@@ -91,11 +91,13 @@ struct _protocol_t {
 以及与protocol相关的一些全局静态变量：
 
 ```
+(used, section ("__DATA,__objc_const"))
 static const char *_OBJC_PROTOCOL_METHOD_TYPES_NSCopying [] = 
 {
 	"@24@0:8^{_NSZone=}16"
 };
 
+(used, section ("__DATA,__objc_const"))
 static struct /*_method_list_t*/ {
 	unsigned int entsize;  // sizeof(struct _objc_method)
 	unsigned int method_count;
@@ -127,6 +129,7 @@ struct _protocol_t *_OBJC_LABEL_PROTOCOL_$_NSCopying = &_OBJC_PROTOCOL_NSCopying
 下面来继续看ChildDelegate协议的生成代码：
 
 ```
+(used, section ("__DATA,__objc_const"))
 static const char *_OBJC_PROTOCOL_METHOD_TYPES_ChildDelegate = 
 {
 	"v24@0:8@\"NSString\"16",
@@ -138,6 +141,7 @@ static const char *_OBJC_PROTOCOL_METHOD_TYPES_ChildDelegate =
 };
 
 //因为ChildDelegate是继承自NSObojce协议的，所以会多出来这个结构体
+(used, section ("__DATA,__objc_const"))
 static struct /*_protocol_list_t*/ {
 	long protocol_count;  // Note, this is 32/64 bit
 	struct _protocol_t *super_protocols[1];
@@ -147,6 +151,7 @@ static struct /*_protocol_list_t*/ {
 };
 
 //@required 方法
+(used, section ("__DATA,__objc_const"))
 static struct /*_method_list_t*/ {
 	unsigned int entsize;  // sizeof(struct _objc_method)
 	unsigned int method_count;
@@ -160,6 +165,7 @@ static struct /*_method_list_t*/ {
 };
 
 //optional 方法
+(used, section ("__DATA,__objc_const"))
 static struct /*_method_list_t*/ {
 	unsigned int entsize;  // sizeof(struct _objc_method)
 	unsigned int method_count;
@@ -173,6 +179,7 @@ static struct /*_method_list_t*/ {
 };
 
 //property
+(used, section ("__DATA,__objc_const"))
 static struct /*_prop_list_t*/ {
 	unsigned int entsize;  // sizeof(struct _prop_t)
 	unsigned int count_of_properties;
@@ -206,6 +213,7 @@ struct _protocol_t *_OBJC_LABEL_PROTOCOL_$_ChildDelegate = &_OBJC_PROTOCOL_Child
 生成的一系列<mark>_protocol_t</mark>这个结构体对象，最终会被组织成一个<mark>_protocol_list_t</mark>类型的结构体对象，如下：
 
 ```
+(used, section ("__DATA,__objc_const"))
 static struct /*_protocol_list_t*/ {
 	long protocol_count;  // Note, this is 32/64 bit
 	struct _protocol_t *super_protocols[2];
@@ -219,6 +227,7 @@ static struct /*_protocol_list_t*/ {
 生成的<mark>_OBJC_CLASS_PROTOCOLS_$_ChildObject</mark>会被加到<mark>RO_ChildObject</mark>中去。
 
 ```
+(used, section ("__DATA,__objc_const"))
 static struct _class_ro_t RO_ChildObject = {
 	0, __OFFSETOFIVAR__(struct ChildObject, childA), 
 	sizeof(struct ChildObject_IMPL), 
