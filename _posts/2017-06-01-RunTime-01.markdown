@@ -320,7 +320,7 @@ static struct _class_ro_t RO_MyObject = {
 ```
 
 # 说明
-在生成的C++源码中会出现<mark>**(used, section ("__DATA,__objc_const"))**</mark>、<mark>**(used, section ("__DATA,__objc_ivar"))**</mark>、<mark>**(used, section ("__DATA,__objc_const"))**</mark>类似于这种样式的代码，这个表示用这些标示的变量会被放到程序的数据段，程序启动时runtime会从数据段加载这些信息。
+在生成的C++源码中会出现**(used, section ("__DATA,__objc_const"))**、**(used, section ("__DATA,__objc_ivar"))**、**(used, section ("__DATA,__objc_const"))**类似于这种样式的代码，这个表示用这些标示的变量会被放到程序的数据段，程序启动时runtime会从数据段加载这些信息。
 
 # End
 
