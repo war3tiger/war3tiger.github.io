@@ -83,6 +83,7 @@ struct _category_t {
 以及相关的静态结构体对象：
 
 ```
+(used, section ("__DATA,__objc_const"))
 static struct /*_method_list_t*/ {
 	unsigned int entsize;  // sizeof(struct _objc_method)
 	unsigned int method_count;
@@ -96,6 +97,7 @@ static struct /*_method_list_t*/ {
 	{(struct objc_selector *)"setMethodObj:", "v24@0:8@16", (void *)_I_MyObject_Extensions_setMethodObj_} }
 };
 
+(used, section ("__DATA,__objc_const"))
 static struct /*_prop_list_t*/ {
 	unsigned int entsize;  // sizeof(struct _prop_t)
 	unsigned int count_of_properties;
@@ -106,6 +108,7 @@ static struct /*_prop_list_t*/ {
 	{ {"methodObj","T@\"NSObject\",&,N"}}
 };
 
+(used, section ("__DATA,__objc_const"))
 static struct _category_t _OBJC_$_CATEGORY_MyObject_$_Extensions = 
 {
 	"MyObject",
@@ -126,6 +129,7 @@ static void OBJC_CATEGORY_SETUP_$_MyObject_$_Extensions(void ) {
 下面看下<mark>@interface MyObject (Common)</mark>中的结构体对象：
 
 ```
+OBJC_CATEGORY_SETUP_$_MyObject_
 static struct /*_method_list_t*/ {
 	unsigned int entsize;  // sizeof(struct _objc_method)
 	unsigned int method_count;
@@ -136,6 +140,7 @@ static struct /*_method_list_t*/ {
 	{ {"methodCommon", "v16@0:8", (void *)_I_MyObject_Common_methodCommon} }
 };
 
+OBJC_CATEGORY_SETUP_$_MyObject_
 static struct /*_method_list_t*/ {
 	unsigned int entsize;  // sizeof(struct _objc_method)
 	unsigned int method_count;
@@ -146,6 +151,7 @@ static struct /*_method_list_t*/ {
 	{ {"classCommonMethod", "v16@0:8", (void*)_C_MyObject_Common_classCommonMethod}}
 };
 
+OBJC_CATEGORY_SETUP_$_MyObject_
 static struct _category_t _OBJC_$_CATEGORY_MyObject_$_Common = 
 {
 	"MyObject",
@@ -167,6 +173,8 @@ static void *OBJC_CATEGORY_SETUP[] = {
 	(void *)&OBJC_CATEGORY_SETUP_$_MyObject_$_Extensions,
 	(void *)&OBJC_CATEGORY_SETUP_$_MyObject_$_Common,
 };
+
+(used, section ("__DATA, __objc_catlist,regular,no_dead_strip"))
 static struct _category_t *L_OBJC_LABEL_CATEGORY_$ [2] = {
 	&_OBJC_$_CATEGORY_MyObject_$_Extensions,
 	&_OBJC_$_CATEGORY_MyObject_$_Common,
