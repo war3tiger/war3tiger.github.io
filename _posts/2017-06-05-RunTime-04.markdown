@@ -209,3 +209,8 @@ void _read_images(header_info **hList, uint32_t hCount, int totalClasses, int un
     }
 }
 ```
+**map_image**阶段完成了类库的加载。
+# load_images
+该函数的作用主要就是从已经加载的OC类中找到有load方法的类，并执行其中的load方法。
+
+这里的功能比较简单，不做分析。
