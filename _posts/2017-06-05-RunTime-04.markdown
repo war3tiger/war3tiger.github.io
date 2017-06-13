@@ -34,5 +34,153 @@ map_images(unsigned count, const char * const paths[],
     return map_images_nolock(count, paths, mhdrs);
 }
 ```
-这里的paths里面的其实是dyld加载的各个OC的类库，mdhrs是与类库相对应的一个mach_header类型的变量。可以看下paths里面的内容：
-![]()
+这里的paths里面的其实是dyld加载的各个OC的类库，mdhrs是与类库相对应的一个mach_header类型的变量，count就是paths的数组长度。可以看下paths里面的内容：
+
+```
+/Users/zyh/Library/Developer/Xcode/DerivedData/objc-amdcxyrwpmnquyhanfsebqgcarms/Build/Products/Debug/debug-objc
+/System/Library/PrivateFrameworks/RemoteViewServices.framework/Versions/A/RemoteViewServices
+/System/Library/PrivateFrameworks/Backup.framework/Versions/A/Backup
+/System/Library/Frameworks/Carbon.framework/Versions/A/Frameworks/Ink.framework/Versions/A/Ink
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Debugger/libViewDebuggerSupport.dylib
+/System/Library/Frameworks/AppKit.framework/Versions/C/AppKit
+...
+```
+从**map_images**中可以看到主要实现的逻辑在**map_images_nolock**中，该函数的实现代码主要就是两个,现在用伪代码实现下并加注释(**请详细看注释，是精华所在**)说明：
+
+```
+/*
+ mhCount:当前dyld加载的OC的类库的数量
+ mhPaths:OC类库的文件地址
+ mhdirs:每个OC库文件的文件信息
+ */
+void map_images_nolock(unsigned mhCount, const char * const mhPaths[],
+                  const struct mach_header * const mhdrs[])
+{
+    header_info *hList[mhCount];
+    uint32_t hCount = 0;
+    
+    int totalClasses = 0;//所有的mhPaths的库中总共包含了多少个OC类。
+    int unoptimizedTotalClasses = 0;//这个目前与totalClass一样。
+    {
+        uint32_t i = mhCount;
+        while (i--) {
+            const headerType *mhdr = (const headerType *)mhdrs[i];
+            /*
+             在这里totalClasses、unoptimizedTotalClasses不是值传参，是引用传参。
+             该函数的作用是：
+             1. 根据mhdr信息，生成一个header_info的一个变量info，该变量保存了mhdr这个值，并将info放到以FirstHeader为头部的链表中。
+             2. 根据mhdr信息计算mhPath[i]这个地址的类库里面有多少个OC类，并加到totalClasses中。
+             */
+            auto hi = addHeader(mhdr, mhPaths[i], totalClasses, unoptimizedTotalClasses);
+            if (!hi) {
+                continue;
+            }
+            
+            hList[hCount++] = hi;
+        }
+    }
+    
+    if (hCount > 0) {
+        //真正的加载类、协议、category的地方。单独拿出来分析。
+        _read_images(hList, hCount, totalClasses, unoptimizedTotalClasses);
+    }
+}
+```
+下面来看下**_read_images**的伪代码实现：
+
+```
+void _read_images(header_info **hList, uint32_t hCount, int totalClasses, int unoptimizedTotalClasses)
+{
+    header_info *hi;
+    size_t count;
+    size_t i;
+    static bool doneOnce;
+    
+    if (!doneOnce) {
+        doneOnce = YES;
+        //这里会根据编译器是否需要优化而对类的数量做了改变。
+        int namedClassesSize =
+        (isPreoptimized() ? unoptimizedTotalClasses : totalClasses) * 4 / 3;
+        
+        //该变量是个全局的NXMapTable，是个key-value的hashTable。
+        gdb_objc_realized_classes =
+        NXCreateMapTable(NXStrValueMapPrototype, namedClassesSize);
+    }
+    
+    //加载类中实现的协议对象
+    for (EACH_HEADER) {
+        extern objc_class OBJC_CLASS_$_Protocol;
+        Class cls = (Class)&OBJC_CLASS_$_Protocol;
+        assert(cls);
+        //该变量是一个全局的NXMapTable，存储着各个OC类库中的协议的结构体静态变量。key-value
+        NXMapTable *protocol_map = protocols();
+        bool isPreoptimized = hi->isPreoptimized();
+        bool isBundle = hi->isBundle();
+        
+        //其实就是从程序的数据段寻找__objc_protolist类型的变量。可以参考clang编译的C++源码。
+        protocol_t **protolist = _getObjc2ProtocolList(hi, &count);
+        for (i = 0; i < count; i++) {
+            //该方法主要就是将protolist[i]存入protocol_map中。
+            readProtocol(protolist[i], cls, protocol_map,
+                         isPreoptimized, isBundle);
+        }
+    }
+    
+    //加载类对象
+    for (EACH_HEADER) {
+        //从程序的数据段寻找__objc_nlclslist类型的变量。
+        classref_t *classlist =
+        _getObjc2NonlazyClassList(hi, &count);
+        for (i = 0; i < count; i++) {
+            Class cls = remapClass(classlist[i]);
+            if (!cls) continue;
+            //这里主要是做了两步骤：
+            //1. 设置了cls的superclass以及data()，并将cls添加到superclass的链表中。
+            //2. 添加methodlist方法、propertys方法、protocol方法以及category方法。
+            //这里添加category方法时是从unattachedCategories()中的hashtable中取的，
+            //这时如果category方法还没有加到这个table中，那么返回就是空的。
+            realizeClass(cls);
+        }
+    }
+    
+    //添加category方法。
+    for (EACH_HEADER) {
+        //从程序的数据段寻找__objc_catlist类型的变量。
+        category_t **catlist =
+        _getObjc2CategoryList(hi, &count);
+        bool hasClassProperties = hi->info()->hasCategoryClassProperties();
+        
+        for (i = 0; i < count; i++) {
+            category_t *cat = catlist[i];
+            Class cls = remapClass(cat->cls);
+            
+            if (!cls) {
+                continue;
+            }
+            bool classExists = NO;
+            if (cat->instanceMethods ||  cat->protocols
+                ||  cat->instanceProperties)
+            {
+                //1. 首相将cat存入到unattachedCategories()中的hashtable中。
+                //2. 如果cls之前调用过realizeClass方法，那么直接将cat的方法加入到cls中。
+                addUnattachedCategoryForClass(cat, cls, hi);
+                if (cls->isRealized()) {
+                    remethodizeClass(cls);
+                    classExists = YES;
+                }
+            }
+            
+            if (cat->classMethods  ||  cat->protocols
+                ||  (hasClassProperties && cat->_classProperties))
+            {
+                //1. 首相将cat存入到unattachedCategories()中的hashtable中。
+                //2. 如果cls之前调用过realizeClass方法，那么直接将cat的方法加入到cls中。
+                addUnattachedCategoryForClass(cat, cls->ISA(), hi);
+                if (cls->ISA()->isRealized()) {
+                    remethodizeClass(cls->ISA());
+                }
+            }
+        }
+    }
+}
+```
