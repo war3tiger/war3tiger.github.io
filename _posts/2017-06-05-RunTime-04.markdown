@@ -23,7 +23,7 @@ runtime运行OC，开始加载OC类，入口如下：
 ![](https://raw.githubusercontent.com/war3tiger/war3tiger.github.io/master/resources/runtime04/_objc_init.png)
 在该函数中主要加载OC类的主要是`_dyld_objc_notify_register(&map_images, load_images, unmap_image);`这个函数。
 # map_images
-当dyld加载OC的类库时会调用到该方法，该方法会调用多次，可能是dyld在加载OC类库时没有全部加载进来，而是一部分一部分加载的。可以看下该方法的实现：
+可以看下该方法的实现：
 
 ```
 void
@@ -102,9 +102,34 @@ void _read_images(header_info **hList, uint32_t hCount, int totalClasses, int un
         int namedClassesSize =
         (isPreoptimized() ? unoptimizedTotalClasses : totalClasses) * 4 / 3;
         
-        //该变量是个全局的NXMapTable，是个key-value的hashTable。
+        //该变量是个全局的NXMapTable，是个key-value的hashTable。存储了加载出来的类对象。
         gdb_objc_realized_classes =
         NXCreateMapTable(NXStrValueMapPrototype, namedClassesSize);
+    }
+    
+    //加载类对象
+    for (EACH_HEADER) {
+        if (! mustReadClasses(hi)) {
+            // Image is sufficiently optimized that we need not call readClass()
+            continue;
+        }
+        
+        bool headerIsBundle = hi->isBundle();
+        bool headerIsPreoptimized = hi->isPreoptimized();
+        //其实就是从程序的数据段寻找__objc_classlist类型的变量。可以参考clang编译的C++源码。
+        classref_t *classlist = _getObjc2ClassList(hi, &count);
+        for (i = 0; i < count; i++) {
+            Class cls = (Class)classlist[i];
+            //将类加载出来放到gdb_objc_realized_classes中。
+            Class newCls = readClass(cls, headerIsBundle, headerIsPreoptimized);
+            
+            if (newCls != cls  &&  newCls) {
+                resolvedFutureClasses = (Class *)
+                realloc(resolvedFutureClasses,
+                        (resolvedFutureClassCount+1) * sizeof(Class));
+                resolvedFutureClasses[resolvedFutureClassCount++] = newCls;
+            }
+        }
     }
     
     //加载类中实现的协议对象
