@@ -1,0 +1,38 @@
+---
+layout: post
+title:  "iOS下RunTime分析五（weak实现原理）"
+date:   2017-06-13 22:00:00 +0800
+categories: jekyll update
+---
+weak的实现主要依靠的是llvm强大的编译器。在编译阶段在遇到weak变量赋值时，编译器会插入一些runtime代码，现在来看下实例：
+
+```
+__weak YouObject *obj1;
+{
+	YouObject *obj = [[YouObject alloc] init];
+	//以上部分不讨论，这里只讨论后面的代码。
+	obj1 = obj;
+}
+```
+编译器在遇到<mark>obj1=obj</mark>是会自动将该代码转换为这个函数：
+
+```
+id objc_storeWeak(id *location, id newObj);
+```
+其中location就是&obj1，newObj就是obj。该函数的主要目的就是从一个全局的tables中创建一个以obj为key的一个table（这里叫tableA），tableA中存的是所有指向newObj的weak类型的变量，所以location会存到tableA中，同时执行*location=newObj操作。
+
+当使用obj1时，比如：**NSLog("%@", obj1);**，这段代码执行到obj1时，会调用如下函数：
+
+```
+id objc_loadWeakRetained(id *location)
+```
+该函数其实就是返回的*location。
+
+当obj离开所属的作用域时，编译器又会生成该代码：
+
+```
+void objc_storeStrong(id *location, id newObj)
+```
+该函数这个location就是&obj1，newObj就是nil。
+
+所以在对象销毁时obj会被置为nil。
