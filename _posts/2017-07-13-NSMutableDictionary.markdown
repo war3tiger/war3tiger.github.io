@@ -118,6 +118,9 @@ GSIMapNode nodeForKeyInBucket(GSIMapBucket bucket, id key)
 ### 总结
 通过以上的伪代码分析和内存结构分析可以知道：
 
-`setObject:forKey:`会根据key和object生成一个node，该node会和map->buckets关联起来。
+1. `setObject:forKey:`会根据key和object生成一个node，该node会和map->buckets关联起来。
 也就是说map->buckets其实就是负责管理外面设置的对象的。
-map->nodeChunks有啥用？下文揭晓。
+
+2. 在存key的时候会用到的方法：hash，copyWithZone:，isEqual:。
+
+3. map->nodeChunks有啥用？下文揭晓。
