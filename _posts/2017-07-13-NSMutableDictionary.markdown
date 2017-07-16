@@ -123,4 +123,4 @@ GSIMapNode nodeForKeyInBucket(GSIMapBucket bucket, id key)
 
 2. 在存key的时候会用到的方法：hash，copyWithZone:，isEqual:。
 
-3. map->nodeChunks有啥用？下文揭晓。
+3. 在字典销毁时会以map->nodeChunks为开始，把创建的GSIMapNode一个一个free掉。
