@@ -24,3 +24,46 @@ obj = [[MyObject alloc] init];
 [obj addObserver:self forKeyPath:@"name" options:NSKeyValueObservingOptionNew context:nil];
 ```
 当调用到最后一个方法时，在内部已经生成了一个子类，obj的isa指向新生成的子类，MyObject是新生成子类的父类，具体结构如下图所示：
+![kvo_memory](https://raw.githubusercontent.com/war3tiger/war3tiger.github.io/master/resources/kvo/kvo.png)
+这时`KVO_MyObject`通过runtime重写了`setName:`方法。实现伪码如下：
+
+```
+//KVO_MyObject Class
+- (void) setName: (NSString *)val
+{
+  NSString	*key;
+  Class		c = [self class];
+  void		(*imp)(id,SEL,NSString *);
+
+  imp = (void (*)(id,SEL,NSString *))[c instanceMethodForSelector: _cmd];
+
+  if ([c automaticallyNotifiesObserversForKey: @"setName"] == YES)
+    {
+      // pre setting code here
+      [self willChangeValueForKey: key];
+      (*imp)(self, _cmd, val);
+      // post setting code here
+      [self didChangeValueForKey: key];
+    }
+  else
+    {
+      (*imp)(self, _cmd, val);
+    }
+}
+```
+那么这段源码有没有什么问题？
+
+`Class c = [self class]`返回结果是**KVO_MyObject**，然后`[c instanceMethodForSelector: _cmd]`返回的又是自己的实现方法，然后再调用`(*imp)(self, _cmd, val);`，这样就会陷入一个死循环。
+
+那么Apple是如何解决这个问题的？很简单，**KVO_MyObject**里面重写了`- (Class) class`方法。看源码：
+
+```
+//KVO_MyObject
+- (Class) class
+{
+  return class_getSuperclass(object_getClass(self));
+}
+```
+这样当上面再次调用`[self class]`时，其实返回的类就是**MyObject**了，返回的`imp`也是**MyObject**中的真正的imp了，这样就解决了上面的那个问题。
+
+分析到此为止，细节实现可以参考源码。[下载地址](http://gnustep.org/)
