@@ -1,0 +1,26 @@
+---
+layout: post
+title:  "KVO原理浅析"
+date:   2017-07-18 17:12:00 +0800
+categories: jekyll update
+---
+
+最近看了下iOS的KVO的源码实现，在这里Apple已经把runtime用到了极致，感觉到runtime的强大之处。由于时间有限，里面的很多实现细节没有仔细阅读，以后抽时间一一分析。现在先来说一下KVO的实现机制。
+比如有如下类：
+
+```
+@interface MyObject : NSObject
+@property (nonatomic, strong) NSString *name;
+@end
+
+@implementation MyObject
+
+@end
+```
+在某个类中有如下代码：
+
+```
+obj = [[MyObject alloc] init];
+[obj addObserver:self forKeyPath:@"name" options:NSKeyValueObservingOptionNew context:nil];
+```
+当调用到最后一个方法时，在内部已经生成了一个子类，obj的isa指向新生成的子类，MyObject是新生成子类的父类，具体结构如下图所示：
