@@ -108,6 +108,9 @@ void _read_images(header_info **hList, uint32_t hCount, int totalClasses, int un
     }
     
     //加载类对象
+    //这里加载的类对象只是将类对方存到以gdb_objc_realized_classes为变量的一个map中
+    //key值就是该对象的名字
+    //除此之外没有做任何操作，比如与isA的关联和superclass的关联等等。
     for (EACH_HEADER) {
         if (! mustReadClasses(hi)) {
             // Image is sufficiently optimized that we need not call readClass()
@@ -151,7 +154,9 @@ void _read_images(header_info **hList, uint32_t hCount, int totalClasses, int un
         }
     }
     
-    //加载类对象
+    //实现类对象：将类对象与方法函数关联、指定类对象的isA和superclass等等。
+    //该处并不是实现了所有的类对象，只有实现了+(void)load方法的类对象，才会执行这里的逻辑。
+    //那么没有实现load方法的类对象只是放到了上面的map中，在真正使用时才会去关联方法、指定isA等操作。
     for (EACH_HEADER) {
         //从程序的数据段寻找__objc_nlclslist类型的变量。
         classref_t *classlist =
