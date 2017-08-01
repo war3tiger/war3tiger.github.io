@@ -103,6 +103,7 @@ __main_block_impl_0(void *fp, struct __main_block_desc_0 *desc, MyObject *_obj, 
   }
 ```
 注意这里会执行一段**obj(_obj)**函数，这里其实就等于`obj=_obj`，在执行这段代码的时候强大的编译器来了，会将赋值操作分解成下面两个函数:
+
 ![block_01_01](https://raw.githubusercontent.com/war3tiger/war3tiger.github.io/master/resources/block/block_01_01.png)
 
 这时这个MyObject对象相当于被block强引用一次。
@@ -208,6 +209,7 @@ void _Block_object_assign(void *destAddr, const void *object, const int flags) {
 ```
 ##### release方法
 `g_blcok = _Block_copy(g_block);`执行完这个函数后，就会调用`g_block();`方法执行block中的函数，最后调用`g_block = nil;`方法销毁block，当执行到该段代码时强大的编译器又出现了，它会插入如下代码来销毁block。如下图：
+
 ![block_01_02](https://raw.githubusercontent.com/war3tiger/war3tiger.github.io/master/resources/block/block_01_02.png)
 
 下面看下_Block_release源码实现：
