@@ -92,7 +92,7 @@ int main(int argc, const char * argv[]) {
 
 ## __main_block_impl_0 构造函数
 
-当函数执行到`g_block = ((void (*)())&__main_block_impl_0((void *)__main_block_func_0, &__main_block_desc_0_DATA, obj, 570425344));`时，开始执行`__main_block_impl_0 `的构造方法：
+当函数执行到`g_block = &__main_block_impl_0(__main_block_func_0, &__main_block_desc_0_DATA, obj, 570425344);`时，开始执行`__main_block_impl_0 `的构造方法：
 
 ```
 __main_block_impl_0(void *fp, struct __main_block_desc_0 *desc, MyObject *_obj, int flags=0) : obj(_obj) {
@@ -182,7 +182,7 @@ enum {
 };
 
 ```
-##### copy方法
+### copy方法
 下面看下`_Block_object_assign `的源码实现：
 
 ```
@@ -207,7 +207,21 @@ void _Block_object_assign(void *destAddr, const void *object, const int flags) {
     }
 }
 ```
-##### release方法
+`objc_storeStrong`就是将object对象retain，然后赋值给`*destAddr`。看下源码：
+
+```
+void objc_storeStrong(id *location, id obj)
+{
+    id prev = *location;
+    if (obj == prev) {
+        return;
+    }
+    objc_retain(obj);
+    *location = obj;
+    objc_release(prev);
+}
+```
+### release方法
 `g_blcok = _Block_copy(g_block);`执行完这个函数后，就会调用`g_block();`方法执行block中的函数，最后调用`g_block = nil;`方法销毁block，当执行到该段代码时强大的编译器又出现了，它会插入如下代码来销毁block。如下图：
 
 ![block_01_02](https://raw.githubusercontent.com/war3tiger/war3tiger.github.io/master/resources/block/block_01_02.png)
