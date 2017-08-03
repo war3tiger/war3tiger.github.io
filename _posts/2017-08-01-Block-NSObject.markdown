@@ -29,6 +29,8 @@ int main(int argc, const char * argv[]) {
 ```
 通过`clang -rewrite-objc main.mm`可以将OC代码生成可读的C源码。如下，这里只贴出主要部分的代码而且做了简化操作，详细信息自己可以生成看下。
 
+**备注：其实目前生成的C源码和实际运行的是不一样的。详见下文。**
+
 ```
 struct __block_impl {
   void *isa;
@@ -54,11 +56,13 @@ static void __main_block_func_0(struct __main_block_impl_0 *__cself)
 }
 static void __main_block_copy_0(struct __main_block_impl_0*dst, struct __main_block_impl_0*src) 
 {
+	//ARC下是不会调用该方法的，其实调用的是objc_storeStrong(&dst->obj, src->obj);
 	_Block_object_assign((void*)&dst->obj, (void*)src->obj, 3/*BLOCK_FIELD_IS_OBJECT*/);
 }
 
 static void __main_block_dispose_0(struct __main_block_impl_0*src) 
 {
+	//ARC下是不会调用该方法的，其实调用的是objc_storeStrong(&src->obj, nil);
 	_Block_object_dispose((void*)src->obj, 3/*BLOCK_FIELD_IS_OBJECT*/);
 }
 
@@ -106,7 +110,7 @@ __main_block_impl_0(void *fp, struct __main_block_desc_0 *desc, MyObject *_obj, 
 
 ![block_01_01](https://raw.githubusercontent.com/war3tiger/war3tiger.github.io/master/resources/block/block_01_01.png)
 
-这时这个MyObject对象相当于被block强引用一次。
+这时这个MyObject对象相当于被block强引用一次。（注：目前该block是在栈上的）
 
 然后继续执行该构造方法中的代码，这时会执行`impl.isa = &_NSConcreteStackBlock;`，这表示该block是在栈上创建的。
 `impl.Flags = flags;(BLOCK_HAS_COPY_DISPOSE| BLOCK_USE_STRET)`这里的flags是如下类型：
@@ -170,6 +174,7 @@ static void *_Block_copy_internal(const void *arg, const int flags) {
 _Block_object_assign((void*)&dst->obj, (void*)src->obj, 3);
 _Block_object_dispose((void*)src->obj, 3);
 ```
+
 这两个函数最后面的那个参数是如下类型：
 
 ```
@@ -182,32 +187,20 @@ enum {
 };
 
 ```
-### copy方法
-下面看下`_Block_object_assign `的源码实现：
+**勘误：**
+
+<mark>在ARC下执行**(*aBlock->descriptor->copy)(result, aBlock);**时实际上调用的并不是 **_Block_object_assign**而是**objc_storeStrong**方法。同样调用**(*aBlock->descriptor->dispose)(aBlock)**时也不会调用**_Block_object_dispose**而是**objc_storeStrong**。</mark>
+
+**以上两个方法都是在MRC下调用的。**
+
+所以可以将上面两个方法替换为：
 
 ```
-void _Block_object_assign(void *destAddr, const void *object, const int flags) {
-    
-    if ((flags & BLOCK_BYREF_CALLER) == BLOCK_BYREF_CALLER) {
-        if ((flags & BLOCK_FIELD_IS_WEAK) == BLOCK_FIELD_IS_WEAK) {
-            _Block_assign_weak(object, destAddr);
-        }
-        else {
-            _Block_assign((void *)object, destAddr);
-        }
-    }
-    else if ((flags & BLOCK_FIELD_IS_BYREF) == BLOCK_FIELD_IS_BYREF)  {
-        _Block_byref_assign_copy(destAddr, object, flags);
-    }
-    else if ((flags & BLOCK_FIELD_IS_BLOCK) == BLOCK_FIELD_IS_BLOCK) {
-        _Block_assign(_Block_copy_internal(object, flags), destAddr);
-    }
-    else if ((flags & BLOCK_FIELD_IS_OBJECT) == BLOCK_FIELD_IS_OBJECT) {
-        objc_storeStrong(destAddr, object);
-    }
-}
+objc_storeStrong(&dst->obj, src->obj);
+objc_storeStrong(&src->obj, nil);
 ```
-`objc_storeStrong`就是将object对象retain，然后赋值给`*destAddr`。看下源码：
+### objc_storeStrong
+下面看下`objc_storeStrong `的源码实现：
 
 ```
 void objc_storeStrong(id *location, id obj)
@@ -221,6 +214,8 @@ void objc_storeStrong(id *location, id obj)
     objc_release(prev);
 }
 ```
+
+`objc_storeStrong`就是将obj对象retain，然后赋值给`*location`，并将release掉prev。
 ### release方法
 `g_blcok = _Block_copy(g_block);`执行完这个函数后，就会调用`g_block();`方法执行block中的函数，最后调用`g_block = nil;`方法销毁block，当执行到该段代码时强大的编译器又出现了，它会插入如下代码来销毁block。如下图：
 
@@ -248,24 +243,7 @@ void _Block_release(void *arg) {
     }
 }
 ```
-这时就会调用`__main_block_desc_0_DATA `中的`dispose`方法。最终会执行到`_Block_object_dispose((void*)src->obj, 3);`该方法。源码如下：
-
-```
-void _Block_object_dispose(const void *object, const int flags) {
-    if (flags & BLOCK_FIELD_IS_BYREF)  {
-        _Block_byref_release(object);
-    }
-    else if ((flags & (BLOCK_FIELD_IS_BLOCK|BLOCK_BYREF_CALLER)) == BLOCK_FIELD_IS_BLOCK) {
-        _Block_destroy(object);
-    }
-    else if ((flags & (BLOCK_FIELD_IS_WEAK|BLOCK_FIELD_IS_BLOCK|BLOCK_BYREF_CALLER)) == BLOCK_FIELD_IS_OBJECT) {
-        objc_storeStrong(&object, nil);
-    }
-}
-
-```
-执行到`objc_storeStrong(&object, nil);`时，这里就会将block捕获的MyObject对象解引用下。
-至此g_block解引用了它捕获到的全部对象，g_block对象也被销毁掉了。
+这时就会调用`__main_block_desc_0_DATA `中的`dispose`方法。最终会执行到`objc_storeStrong(&src->obj, nil);`该方法。至此g_block解引用了它捕获到的全部对象，g_block对象也被销毁掉了。
 
 ### 备注：
 1. `latching_incr_int`表示将block的引用计数加1。
@@ -274,4 +252,6 @@ void _Block_object_dispose(const void *object, const int flags) {
 # 参考
 1. [BlocksRuntime](http://llvm.org/svn/llvm-project/compiler-rt/trunk/lib/BlocksRuntime/runtime.c)
 2. [Block_private.h](http://llvm.org/svn/llvm-project/compiler-rt/trunk/lib/BlocksRuntime/Block_private.h)
+3. [Block Implementation](http://clang.llvm.org/docs/Block-ABI-Apple.html)
+4. [Blocks的实现](http://kylinroc.github.io/blocks.html)
 3. OC Runtime源码
