@@ -189,7 +189,7 @@ enum {
 ```
 **勘误：**
 
-<mark>在ARC下执行**(*aBlock->descriptor->copy)(result, aBlock);**时实际上调用的并不是 **_Block_object_assign**而是**objc_storeStrong**方法。同样调用**(*aBlock->descriptor->dispose)(aBlock)**时也不会调用**_Block_object_dispose**而是**objc_storeStrong**。</mark>
+<mark>在ARC下执行(*aBlock->descriptor->copy)(result, aBlock);时实际上调用的并不是 _Block_object_assign而是objc_storeStrong方法。同样调用(*aBlock->descriptor->dispose)(aBlock)时也不会调用_Block_object_dispose而是objc_storeStrong。</mark>
 
 **以上两个方法都是在MRC下调用的。**
 
