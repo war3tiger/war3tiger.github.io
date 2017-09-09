@@ -118,15 +118,15 @@ pthread_set_specific
 
 1. `AutoreleasePoolPage`初始内存图如下：
 
-![autorelease_01](https://raw.githubusercontent.com/war3tiger/war3tiger.github.io/master/resources/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/Factory_method.png)
+![autorelease_01](https://github.com/war3tiger/war3tiger.github.io/blob/master/resources/AutoreleasePoolPage/autorelease_01.png?raw=true)
 
 2. `void *pool = objc_autoreleasePoolPush();`内存结构如下图：
 
-![autorelease_02](https://raw.githubusercontent.com/war3tiger/war3tiger.github.io/master/resources/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/Factory_method.png)
+![autorelease_02](https://raw.githubusercontent.com/war3tiger/war3tiger.github.io/master/resources/AutoreleasePoolPage/autorelease_02.png)
 
 3. `objc_autoreleaseReturnValue(obj);`内存结构如下图：
 
-![autorelease_03](https://raw.githubusercontent.com/war3tiger/war3tiger.github.io/master/resources/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/Factory_method.png)
+![autorelease_03](https://github.com/war3tiger/war3tiger.github.io/blob/master/resources/AutoreleasePoolPage/autorelease_03.png?raw=true)
 
 执行完第3步之后，obj已经加到了`AutoreleasePoolPage`中了，如果还有其他autorelease对象也是通过这种方式加进去的，即：将当前对象放到next所指的区域，然后next++。
 
@@ -138,7 +138,7 @@ pthread_set_specific
 
 执行过程和**场景一**过程类似，只是多了一个嵌套。现在就分析下嵌套是怎么回事。看下图：
 
-![autorelease_04](https://raw.githubusercontent.com/war3tiger/war3tiger.github.io/master/resources/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/Factory_method.png)
+![autorelease_04](https://raw.githubusercontent.com/war3tiger/war3tiger.github.io/master/resources/AutoreleasePoolPage/autorelease_04.png)
 
 在上图中当嵌套的autorelease执行完之后，`next`指针就会指向`0xa1a2a3a4`的地址。
 
