@@ -1,0 +1,138 @@
+---
+layout: post
+title:  "NSdate的坑"
+date:   2018-09-07 18:39:00 +0800
+categories: jekyll update
+---
+
+#例子1
+
+```
+NSDate *date1 = [NSDate date];
+printf("printf date1:%s\n", [[date1 description] UTF8String]);
+NSLog(@"NSLog date1:%@", date1);
+```
+输出结果是：
+
+```
+printf date1:2018-09-07 10:31:00 +0000
+2018-09-07 18:31:00.109347+0800 DateDemo[8682:956208] NSLog date1:Fri Sep  7 18:31:00 2018
+```
+同一个NSDate实例，输出结果为什么会不一样？哪个应该是正确的？
+
+**说明：**
+其实`printf`这个函数输出的结果是正确的，`NSLog`输出的结果其实是对`date1`这个实例做了时区转换，转换成了当前系统所在的时区。所以在查看一个NSDate对象是否正确时不可以使用`NSlog`这个输出查看。
+
+**解释：**`[NSDate date]`返回的时间是“格林尼治时间”0时区的时间，而我们想要的时间是当地所在的时区的时间。例如：北京时间，是东8区时间，与“格林尼治时间”差了8个时区，所以看到的结果是`NSLog`输出的比`printf`输出的要晚8个小时。
+
+那么如何得到正确的时间，使用如下代码：
+
+```
+NSDate *date = [NSDate date];
+NSTimeZone *zone = [NSTimeZone systemTimeZone];
+NSInteger interval = [zone secondsFromGMTForDate:date];
+date = [date dateByAddingTimeInterval:interval];
+    
+printf("printf date:%s\n", [[date description] UTF8String]);
+NSLog(@"NSLog date:%@", date);
+```
+输出结果是：
+
+```
+printf date1:2018-09-07 18:57:43 +0000
+2018-09-07 18:57:43.607183+0800 DateDemo[8700:962240] NSLog date1:Sat Sep  8 02:57:43 2018
+```
+可以看到`printf`输出了正确的结果。`NSLog`输出的还是比`printf`输出的晚8个小时。
+
+
+#例子2
+
+```
+NSDate *date = [NSDate date];
+NSDateFormatter *format = [[NSDateFormatter alloc] init];
+[format setDateFormat:@"yyyy-MM-dd HH:mm:ss"];
+NSString *dateStr = [format stringFromDate:date];
+NSLog(@"date:%@", dateStr);
+
+date = [NSDate date];
+NSTimeZone *zone = [NSTimeZone systemTimeZone];
+NSInteger interval = [zone secondsFromGMTForDate:date];
+date = [date dateByAddingTimeInterval:interval];
+dateStr = [format stringFromDate:date];
+NSLog(@"date:%@", dateStr);
+```
+
+输出结果是：
+
+```
+2018-09-10 15:14:36.524584+0800 DateDemo[10061:1421553] date:2018-09-10 15:14:36
+2018-09-10 15:14:36.524769+0800 DateDemo[10061:1421553] date:2018-09-10 23:14:36
+```
+**说明：**这里可以看出，如果使用`NSDateFormatter`将`NSDate`对象转换成`NSString`对象时内部也是做了时区转换了。如果在创建`NSDate`对象时使用了当地时区，那么在生成`NSDateFormatter`对象时，需要将该对象的时区设置成“格林尼治时间”0时区的时间。
+
+如下：
+
+```
+NSDate *date = [NSDate date];
+NSTimeZone *zone = [NSTimeZone systemTimeZone];
+NSInteger interval = [zone secondsFromGMTForDate:date];
+date = [date dateByAddingTimeInterval:interval];
+    
+NSDateFormatter *format = [[NSDateFormatter alloc] init];
+[format setTimeZone:[NSTimeZone timeZoneForSecondsFromGMT:0]];
+[format setDateFormat:@"yyyy-MM-dd HH:mm:ss"];
+NSString *dateStr = [format stringFromDate:date];
+NSLog(@"date:%@", dateStr);
+```
+
+输出结果是：
+
+```
+2018-09-10 15:28:04.058079+0800 DateDemo[10079:1425406] date:2018-09-10 15:28:04
+```
+
+#例子3
+```
+NSDate *date = [NSDate date];
+NSCalendar * calendar = [[NSCalendar alloc] initWithCalendarIdentifier:NSCalendarIdentifierGregorian];
+NSDateComponents *comps = [calendar components:NSCalendarUnitYear|NSCalendarUnitMonth|NSCalendarUnitDay|NSCalendarUnitHour|NSCalendarUnitMinute fromDate:date];
+NSLog(@"year:%ld, month:%ld, day:%ld, hour:%ld, min:%ld", comps.year, comps.month, comps.day, comps.hour, comps.minute);
+    
+date = [NSDate date];
+NSTimeZone *zone = [NSTimeZone systemTimeZone];
+NSInteger interval = [zone secondsFromGMTForDate:date];
+date = [date dateByAddingTimeInterval:interval];
+calendar = [[NSCalendar alloc] initWithCalendarIdentifier:NSCalendarIdentifierGregorian];
+comps = [calendar components:NSCalendarUnitYear|NSCalendarUnitMonth|NSCalendarUnitDay|NSCalendarUnitHour|NSCalendarUnitMinute fromDate:date];
+NSLog(@"year:%ld, month:%ld, day:%ld, hour:%ld, min:%ld", comps.year, comps.month, comps.day, comps.hour, comps.minute);
+```
+输出结果是：
+
+```
+2018-09-10 15:33:35.654480+0800 DateDemo[10090:1427438] year:2018, month:9, day:10, hour:15, min:33
+2018-09-10 15:33:35.654871+0800 DateDemo[10090:1427438] year:2018, month:9, day:10, hour:23, min:33
+```
+
+**说明：**同例子1和例子2是一样的。
+
+修复如下：
+
+```
+NSDate *date = [NSDate date];
+NSTimeZone *zone = [NSTimeZone systemTimeZone];
+NSInteger interval = [zone secondsFromGMTForDate:date];
+date = [date dateByAddingTimeInterval:interval];
+    
+NSCalendar * calendar = [[NSCalendar alloc] initWithCalendarIdentifier:NSCalendarIdentifierGregorian];
+calendar.timeZone = [NSTimeZone timeZoneForSecondsFromGMT:0];
+NSDateComponents *comps = [calendar components:NSCalendarUnitYear|NSCalendarUnitMonth|NSCalendarUnitDay|NSCalendarUnitHour|NSCalendarUnitMinute fromDate:date];
+NSLog(@"year:%ld, month:%ld, day:%ld, hour:%ld, min:%ld", comps.year, comps.month, comps.day, comps.hour, comps.minute);
+```
+输出结果是：
+
+```
+2018-09-10 15:37:05.833754+0800 DateDemo[10095:1428430] year:2018, month:9, day:10, hour:15, min:37
+```
+
+#总结
+使用`[NSDate date]`生成的对象是基于“格林尼治时间”0时区的时间的，与`NSDate`相关的其他类的对象其内部可能已经做了时区转换，转换为当地时区的时间了，所以其他类对象在操作`NSDate`的对象时表现是正常的。如果将`NSDate`对象转换为当地所在时区，那么其他相关类对象一定要设置成基于“格林尼治时间”0时区的时间。
