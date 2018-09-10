@@ -5,7 +5,7 @@ date:   2018-09-07 18:39:00 +0800
 categories: jekyll update
 ---
 
-#例子1
+## 例子1
 
 ```
 NSDate *date1 = [NSDate date];
@@ -45,7 +45,7 @@ printf date1:2018-09-07 18:57:43 +0000
 可以看到`printf`输出了正确的结果。`NSLog`输出的还是比`printf`输出的晚8个小时。
 
 
-#例子2
+## 例子2
 
 ```
 NSDate *date = [NSDate date];
@@ -91,7 +91,7 @@ NSLog(@"date:%@", dateStr);
 2018-09-10 15:28:04.058079+0800 DateDemo[10079:1425406] date:2018-09-10 15:28:04
 ```
 
-#例子3
+## 例子3
 ```
 NSDate *date = [NSDate date];
 NSCalendar * calendar = [[NSCalendar alloc] initWithCalendarIdentifier:NSCalendarIdentifierGregorian];
