@@ -11,7 +11,8 @@ categories: jekyll update
 
 [3. 数据传送指令MOV家族](#catalog-3)
 ## <a name="catalog-1"></a>寄存器
-x86-64位CPU的16个64位通用目的寄存器。如图：![](../resources/csapp/1.png)
+x86-64位CPU的16个64位通用目的寄存器。如图：
+![](../resources/csapp/1.png)
 __备注__：有很多汇编指令会复制和生成1字节、2字节、4字节和8字节值。当这些指令以寄存器为目标时对于生成小于8字节结果的指令会有两条处理规则：
 
 ```
