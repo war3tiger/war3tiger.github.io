@@ -12,7 +12,8 @@ categories: jekyll update
 [3. 数据传送指令MOV家族](#catalog-3)
 ## <a name="catalog-1"></a>寄存器
 x86-64位CPU的16个64位通用目的寄存器。如图：
-![](https://github.com/war3tiger/war3tiger.github.io/blob/master/resources/csapp/1.png)
+
+![1](https://github.com/war3tiger/war3tiger.github.io/blob/master/resources/csapp/1.png)
 __备注__：有很多汇编指令会复制和生成1字节、2字节、4字节和8字节值。当这些指令以寄存器为目标时对于生成小于8字节结果的指令会有两条处理规则：
 
 ```
@@ -23,7 +24,8 @@ __备注__：有很多汇编指令会复制和生成1字节、2字节、4字节�
 在这些16个通用寄存器中__%rsp__是栈指针，用来说明运行时栈的结束位置。
 
 ## <a name="catalog-2"></a>操作数指示符
-![](../resources/csapp/2.png)
+
+![2](../resources/csapp/2.png)
 
 ## <a name="catalog-3"></a>数据传送指令MOV家族
 <table><tr><td bgcolor=orange>限制：传送指令的两个操作数不能都指向内存位置，如果有该操作需要将源值加载到寄存器，再将寄存器值写入目的位置。</td></tr></table>
